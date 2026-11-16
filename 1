@@ -1,0 +1,685 @@
+#SETUP 1 – Install all needed packages (Jupyter Notebook)
+%pip install pandas numpy matplotlib seaborn scikit-learn xgboost openpyxl xlrd
+
+#SETUP 2 – Import all required libraries
+#Run this after the package installation completes.
+# All imports needed by Codes 1–10 (run once after installation)
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+ 
+from sklearn import datasets
+from sklearn.datasets import load_iris, fetch_20newsgroups
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold, cross_val_score, KFold
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, LabelEncoder, normalize
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.naive_bayes import MultinomialNB, GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.svm import SVC
+from sklearn.cluster import KMeans
+from sklearn.multiclass import OneVsRestClassifier, OneVsOneClassifier
+from sklearn.decomposition import PCA
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import (accuracy_score, classification_report, confusion_matrix,
+                             ConfusionMatrixDisplay, precision_score, recall_score,
+                             f1_score, mean_absolute_error, mean_squared_error, r2_score)
+from xgboost import XGBClassifier, plot_importance
+
+
+
+
+1.
+-----------------------------------------------------------------------------------------------
+#Code 1: Sentiment Analysis, Naive Bayes vs Logistic Regression
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score
+ 
+# mock dataset
+# Load the sentiment dataset from CSV
+df = pd.read_csv("sentiment.csv")
+
+# Display the first five rows
+print(df.head())
+# 1. split dataset into features (X) and target labels (Y)
+x = df['text']
+y = df['sentiment']
+ 
+# 2. split into training and testing
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+ 
+# 3. text vectorization (TF-IDF feature extraction)
+vectorizer = TfidfVectorizer(stop_words='english', lowercase=True)
+x_train_vec = vectorizer.fit_transform(x_train)
+x_test_vec = vectorizer.transform(x_test)
+ 
+# 4. initialize and train classifiers
+lr_model = LogisticRegression()
+lr_model.fit(x_train_vec, y_train)
+ 
+nb_model = MultinomialNB()
+nb_model.fit(x_train_vec, y_train)
+ 
+# 5. evaluate and compare models
+lr_preds = lr_model.predict(x_test_vec)
+nb_preds = nb_model.predict(x_test_vec)
+ 
+print("Model Accuracy Comparison")
+print(f"Logistic Regression Accuracy:{accuracy_score(y_test, lr_preds)*100:.2f}%")
+print(f"Multinomial Naive Bayes Accuracy:{accuracy_score(y_test, nb_preds)*100:.2f}%\n")
+ 
+# 6. predict sentiment on new custom texts
+def predict_sentiment(new_texts):
+    new_texts_vec = vectorizer.transform(new_texts)
+ 
+    lr_predictions = lr_model.predict(new_texts_vec)
+    nb_predictions = nb_model.predict(new_texts_vec)
+ 
+    print("testing custom input")
+    for text, lr_pred, nb_pred in zip(new_texts, lr_predictions, nb_predictions):
+        print(f"Text: '{text}'")
+        print(f"LR Prediction:**{lr_pred.upper()}**")
+        print(f"NB Prediction:**{nb_pred.upper()}**\n")
+ 
+custom_samples = ["The item arrived broken and late",
+                  "it wokrs incredibly well, love it!",
+                  "looks good"]
+predict_sentiment(custom_samples)
+
+
+2.
+#Code 2: Multinomial Naive Bayes on 20 Newsgroups
+from sklearn.datasets import fetch_20newsgroups
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score, classification_report
+ 
+# load the 20 newsgroup dataset
+newsgroups = fetch_20newsgroups(subset='all')
+x, y = newsgroups.data, newsgroups.target
+ 
+# split the dataset into training and testing sets
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+ 
+# initialize the TfidfVectorizer
+vectorizer = TfidfVectorizer(stop_words='english', max_df=0.5)
+ 
+# fit and transform the training data and transform the test data
+x_train_tfidf = vectorizer.fit_transform(x_train)
+x_test_tfidf = vectorizer.transform(x_test)
+ 
+# initialize the multinomial naive bayes classifier
+nb_classifier = MultinomialNB()
+ 
+# train the classifier on the training data
+nb_classifier.fit(x_train_tfidf, y_train)
+ 
+# predict the labels for the test data
+y_pred = nb_classifier.predict(x_test_tfidf)
+ 
+# calculate the accuracy
+accuracy = accuracy_score(y_test, y_pred)
+ 
+# generate a classification report
+class_report = classification_report(y_test, y_pred, target_names=newsgroups.target_names)
+ 
+print(f"Accuracy:{accuracy}\n")
+print(f"Classification Report:\n{class_report}")
+
+
+3.
+#Code 3: Gaussian Naive Bayes on Iris
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.datasets import load_iris
+from sklearn.metrics import accuracy_score, classification_report
+ 
+# Load the data set
+iris = load_iris()
+x = iris.data
+y = iris.target
+ 
+# split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+ 
+# 3. Initialize and train the Naive Bayes model
+model = GaussianNB()
+model.fit(X_train, y_train)
+ 
+# 4. Make predictions on the test set
+y_pred = model.predict(X_test)
+ 
+# 5. Evaluate the model's performance
+print(f"Accuracy: {accuracy_score(y_test, y_pred)*100:.2f}%")
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
+ 
+# Loading the credit card dataset
+import pandas as pd
+ 
+raw_data = pd.read_csv(r"C:\Users\Downloads\creditcard(in).xls")
+raw_data
+ 
+X = raw_data.drop("Class", axis=1)
+y = raw_data["Class"] 
+
+4.
+#Code 4: Pipeline with Scaler, PCA, KNN and GridSearchCV
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import Pipeline
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
+ 
+data = load_iris()
+X, y = data.data, data.target
+labels = data.target_names
+ 
+# pipeline with fixed parameters (for explanation)
+pipeline = Pipeline([
+    ('scaler', StandardScaler()),                 # step 1 - standardize the features
+    ('pca', PCA(n_components=2)),                 # step 2 - reduce the dimensions to 2 using PCA
+    ('knn', KNeighborsClassifier(n_neighbors=5))  # step 3 - K-Nearest neighbours classifier
+])
+ 
+# split the data into training and testing sets
+# stratify is to be included in pipeline programs
+x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
+                                                    random_state=42, stratify=y)
+ 
+# fit the pipeline into training set
+pipeline.fit(x_train, y_train)
+ 
+# measure the pipeline accuracy on the test data
+test_score = pipeline.score(x_test, y_test)
+print(f"{test_score:.3f}")
+ 
+# get the model predictions
+y_pred = pipeline.predict(x_test)
+ 
+# generate the confusion matrix
+conf_matrix = confusion_matrix(y_test, y_pred)
+ 
+# create a plot for the confusion matrix
+plt.figure()
+sns.heatmap(conf_matrix, annot=True, cmap='Blues', fmt='d',
+            xticklabels=labels, yticklabels=labels)
+ 
+# set the title and labels
+plt.title("Classification pipeline confusion matrix")
+plt.xlabel('Predicted')
+plt.ylabel("Actual")
+plt.tight_layout()
+plt.show()
+ 
+# make the pipeline without specifying any parameters yet (this is the actual code)
+pipeline = Pipeline(
+    [('scaler', StandardScaler()),
+     ('pca', PCA()),
+     ('knn', KNeighborsClassifier())]
+)
+ 
+# define a model parameter grid to search over
+param_grid = {'pca__n_components': [2, 3],
+              'knn__n_neighbors': [3, 5, 6]}
+ 
+# choose a cross validation method
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+ 
+# determine the best parameters
+best_model = GridSearchCV(estimator=pipeline, param_grid=param_grid,
+                          cv=cv, scoring='accuracy', verbose=2)
+ 
+# fit the best gridsearchcv model to the training data
+best_model.fit(x_train, y_train)
+ 
+# evaluate the accuracy of the best model on the test set
+test_score = best_model.score(x_test, y_test)
+print(f"{test_score:.3f}")
+ 
+# display the best parameters
+best_model.best_params_  
+
+5.
+#Code 5: Random Forest Classifier on Iris
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.datasets import load_iris
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.ensemble import RandomForestClassifier
+ 
+data = load_iris()
+X = data.data
+y = data.target
+ 
+# splitting the data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+ 
+# create a Random Forest Classifier
+rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
+rf_classifier.fit(X_train, y_train)
+ 
+y_pred = rf_classifier.predict(X_test)
+ 
+accuracy = accuracy_score(y_test, y_pred)
+classification_report_str = classification_report(y_test, y_pred)
+print(f"Accuracy: {accuracy}")
+print(f"Classification Report:\n{classification_report_str}")
+
+6.
+#Code 6: XGBoost Classifier on Iris (feature importance and confusion matrix)
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from xgboost import XGBClassifier, plot_importance
+ 
+data = load_iris()
+X = data.data
+y = data.target
+ 
+# splitting the data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.35, random_state=42)
+ 
+xgb_classifier = XGBClassifier(objective='multi:softprob', num_class=3,
+                               eval_metric='mlogloss', random_state=42,
+                               use_label_encoder=False)
+xgb_classifier.fit(X_train, y_train)
+ 
+y_pred_xgb = xgb_classifier.predict(X_test)
+ 
+print(f"XGBoost Accuracy: {accuracy_score(y_test, y_pred_xgb)}")
+print(f"XGBoost Classification Report:\n{classification_report(y_test, y_pred_xgb)}")
+plot_importance(xgb_classifier)
+ 
+# confusion matrix heatmap
+cm = confusion_matrix(y_test, y_pred_xgb)
+ 
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+            xticklabels=data.target_names, yticklabels=data.target_names)
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.title('Confusion Matrix')
+plt.show()
+
+7.
+#Code 7: Churn Prediction with Random Forest, Gradient Boosting and XGBoost
+
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+ 
+from sklearn.model_selection import train_test_split, cross_val_score, KFold
+from sklearn.preprocessing import StandardScaler, LabelEncoder, normalize
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.metrics import (classification_report, confusion_matrix,
+                             accuracy_score, ConfusionMatrixDisplay)
+ 
+from xgboost import XGBClassifier
+ 
+# Load data
+df = pd.read_excel(r"C:\Users\Attachments\Documents\MLM\ChurnData.xlsx")
+df.head()
+ 
+target_col = 'churn'
+ 
+if target_col not in df.columns:
+    target_col = df.columns[-1]
+    print(f"'{target_col}' not found. Using the last column '{target_col}' as target")
+ 
+# Handle Missing Values
+df = df.dropna()
+ 
+# Encode categorical text variables
+le = LabelEncoder()
+for col in df.select_dtypes(include=['object']).columns:
+    df[col] = le.fit_transform(df[col])
+ 
+# Split features and target
+X = df.drop(columns=[target_col])
+y = df[target_col]
+ 
+# Split into train/test sets (80/20 split)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
+                                                    random_state=42, stratify=y)
+ 
+# Feature scaling (optional for tree-based models, required for SVM, Logistic Regression, etc.)
+# scaler = StandardScaler()
+# X_train = scaler.fit_transform(X_train)
+# X_test = scaler.transform(X_test)
+ 
+# Model Initialization
+models = {
+    'Random Forest': RandomForestClassifier(n_estimators=100, random_state=42),
+    'Gradient Boosting': GradientBoostingClassifier(n_estimators=100, random_state=42),
+    'XGBoost': XGBClassifier(n_estimators=100, learning_rate=0.1, random_state=42,
+                             eval_metric='logloss', use_label_encoder=False)
+}
+ 
+# evaluate models using cross-validation loop
+kf = KFold(n_splits=5, shuffle=True, random_state=42)
+ 
+for name, model in models.items():
+    print(f"Model: {name}")
+ 
+    # Fit model
+    model.fit(X_train, y_train)
+ 
+    # Predict on test set
+    y_pred = model.predict(X_test)
+ 
+    # Evaluate model
+    print("Classification Report:")
+    print(classification_report(y_test, y_pred))
+ 
+    print("Confusion Matrix:")
+    cm = confusion_matrix(y_test, y_pred)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp.plot()
+    plt.title(f'Confusion Matrix for {name}')
+    plt.show()
+ 
+    # Cross-validation scores
+    cv_scores = cross_val_score(model, X, y, cv=kf)
+    print(f"Cross-validation scores: {cv_scores}")
+    print(f"Mean CV score: {np.mean(cv_scores)}",
+          f"Standard Deviation of CV scores: {np.std(cv_scores)}")
+    print("-" * 50)
+ 
+# feature importance
+print(" Top 5 Feature Importance:")
+importances = model.feature_importances_
+indices = np.argsort(importances)[::-1]
+ 
+for i in range(min(5, len(X.columns))):
+    print(f"{i + 1}. Feature: {X.columns[indices[i]]}, Importance: {importances[indices[i]]:.4f}")  
+
+8.
+#Code 8: Support Vector Machine (SVM) – Iris dataset
+#part 1 - data pipleline and performance model 
+#1. load the dataset 
+iris=datasets.load_iris()
+X=iris.data
+y=iris.target
+ 
+#2.split into training and testing stats (80%train, 20%test )
+X_train, X_test, y_train, y_test=train_test_split(
+    X,y, test_size=0.2, random_state=42, stratify=y
+)
+ 
+#3.scale the features (required for optimal SVM performance)
+scaler=StandardScaler()
+X_train_scaled=scaler.fit_transform(X_train)
+X_test_scaled=scaler.transform(X_test)
+ 
+#4.Initialize and train the final evaluation model (use all 4 features)
+#evaluation_model=SVC(kernel='rbf', C=1.0, random_state=42) #kernel is used #for projecting the data into a higher plane and reverse it back 
+evaluation_model.fit(X_train_scaled, y_train)
+ 
+#5.evaluate overall performance
+y_pred=evaluation_model.predict(X_test_scaled)
+accuracy=accuracy_score(y_test, y_pred)
+ 
+print(f"Overall Model accuracy: {accuracy*100:.2f}%\n")
+print(classification_report(y_test, y_pred, target_names=iris.target_names))
+
+#part 2: decision boundary visualization 
+print("generating decision boundary plot, close the plot window to  finish script")
+ 
+#to plot in a 2D space, we train a seperate visualizer model using only Sepal length and width 
+X_visual=iris.data[:,:2]
+scaler_visual=StandardScaler()
+X_visual_scaled=scaler_visual.fit_transform(X_visual)
+visual_model=SVC(kernel='rbf', C=1.0, gamma='scale', random_state=42)
+visual_model.fit(X_visual_scaled, y)
+ 
+#Define grid mes boundaries 
+x_min, x_max=X_visual_scaled[:,0].min()-0.5, X_visual_scaled[:,0].max()+0.5
+y_min, y_max=X_visual_scaled[:,1].min()-0.5, X_visual_scaled[:,1].max()+0.5
+xx,yy=np.meshgrid(np.arange(x_min, x_max, 0.02),
+                  np.arange(y_min, y_max, 0.02))
+ 
+#predict across the mesh grid 
+Z=visual_model.predict(np.c_[xx.ravel(),yy.ravel()])
+Z=Z.reshape(xx.shape)
+ 
+#create the graph 
+plt.figure(figsize=(8,6))
+plt.contourf(xx,yy,Z, alpha=0.3, cmap=plt.cm.coolwarm)
+ 
+#overlay the actual data points 
+scatter=plt.scatter(X_visual_scaled[:,0], X_visual_scaled[:,1],c=y,
+                    cmap=plt.cm.coolwarm, edgecolors='k', s=40)
+ 
+#formatting
+plt.xlabel("Sepal Length (standardized)")
+plt.ylabel("Sepal Width(Standarized)")
+plt.title("SVM Decision Boundaries On Iris Dataset (Sepal features)")
+plt.legend(handles=scatter.legend_elements(), labels=list(iris.target_names))
+plt.grid(True, linestyle='--', alpha=0.5)
+plt.show()
+
+9.
+# Code 9: Data ELT – Cleaning, Integration and Transformation
+# Data ELT: place both CSV files in the same folder as this notebook
+customers=pd.read_csv("customers_raw.csv")
+purchases=pd.read_csv("purchases.csv")
+ 
+print(customers.info())
+print(purchases.info())
+print(customers.isnull().sum())
+print(purchases.isnull().sum())
+ 
+# Remove identical purchase rows (the original basic classroom workflow)
+#purchases=purchases.drop_duplicates()
+ 
+#Code 9 – Part 1: Clean names, cities, missing values and IQR outliers
+#1a - remove exact duplicate rows
+before=len(customers)
+df=customers.drop_duplicates(subset="CustomerID", keep="first").copy()
+print(f"(a) Removed duplicates: {before}-> {len(df)} rows")
+ 
+#1b - standardize inconsistent categorical text 
+df["City"] = df["City"].str.strip().str.title()
+print("(b) Standardized 'City' text casing:")
+print(df["City"].unique())
+ 
+#1c- Handle missing values
+df["Name"]=df["Name"].fillna("Unknown")
+df["Age"]=df["Age"].fillna(df["Age"].median())
+df["Salary"]=df["Salary"].fillna(df["Salary"].median())
+print("\n(c) Missing values after imputation:")
+print(df.isnull().sum())
+ 
+#1d- Handle outliers using IQR method
+def cap_outliers_iqr(series):
+    q1,q3=series.quantile([0.25, 0.75])
+    iqr=q3-q1
+    lower, upper= q1-1.5*iqr, q3+1.5*iqr
+    return series.clip(lower, upper)
+ 
+print("\n(d) Outlier capping (IQR method) on Age and Salary:")
+print("Before->", df[["Age", "Salary"]].describe().loc[["min","max"]].to_dict())
+df["Age"]=cap_outliers_iqr(df["Age"])
+df["Salary"]=cap_outliers_iqr(df["Salary"])
+print("After ->", df[["Age", "Salary"]].describe().loc[["min","max"]].to_dict())
+ 
+print("\nCleaned dataset:")
+print(df)
+ 
+#Code 9 – Part 2: Merge customers and purchases
+df_purchases=pd.DataFrame(purchases)
+print("Second spurce (Purchases table):")
+print(df_purchases)
+ 
+df_integrated=pd.merge(df, df_purchases, on="CustomerID", how="left")
+ 
+df_integrated["TotalPurchases"]=df_integrated["TotalPurchases"].fillna(0)
+df_integrated["MemberSince"]=df_integrated["MemberSince"].fillna(df_integrated["MemberSince"].median())
+ 
+print("\nInegrated dataset (customer+purchase info merged on Customer ID):")
+print(df_integrated)
+ 
+#Code 9 – Part 3: Normalize, standardize, encode and bin
+# data transformation 
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, LabelEncoder
+df_t=df_integrated.copy()
+#3a - Normalization (Min-max scaling :0,1)- useful for diastance based models 
+minmax=MinMaxScaler()
+df_t[["Age_MinMax", "Salary_MinMax"]]=minmax.fit_transform(df_t[["Age", "Salary"]])
+#3b - Standardization 
+zscore=StandardScaler()
+df_t[["Age_Z", "Salary_Z"]]=zscore.fit_transform(df_t[["Age","Salary"]])
+ 
+#3c - Encoding categorical variables 
+le=LabelEncoder()
+df_t["Gender_Encoded"]=le.fit_transform(df_t["Gender"])
+df_t=pd.get_dummies(df_t, columns=["City"],prefix="City")
+ 
+#3d - discretization/binning - convert continuous age into categorical buckets 
+bins=[0,25,35,50,100]
+labels=["Young", "Adult","MidAge", "Senior"]
+df_t["Age_Group"]=pd.cut(df_integrated["Age"], bins=bins, labels=labels)
+ 
+print("Transformed dataset (scaled, encoded and binned):")
+show_cols=["CustomerID", "Age", "Age_MinMax", "Age_Z", "Age_Group", "Salary", "Salary_MinMax", "Salary_Z", "Gender", "Gender_Encoded"]
+print(df_t[show_cols])
+ 
+print("\nOne-hot encoded City columns added:")
+city_cols=[c for c in df_t.columns if c.startswith("City_")]
+print(df_t[["CustomerID"]+city_cols])
+
+10.
+#Code 10: General template – only additional, non-duplicate material
+df = pd.read_csv("data.csv")
+# df = pd.read_excel("data.xlsx") # if it's an Excel file instead
+ 
+df.head()
+df.info()
+df.describe()
+df.columns
+ 
+df.isnull().sum()
+df.duplicated().sum()
+ 
+df = df.dropna()
+# df = df.fillna(df["col"].median()) # OR fill instead of dropping
+df = df.drop_duplicates()
+ 
+sns.histplot(df["Age"], kde=True, color="C0")
+plt.title("Distribution of Age")
+plt.show()
+ 
+plt.scatter(df["Age"], df["Income"])
+plt.xlabel("Age"); plt.ylabel("Income")
+plt.title("Age vs Income")
+plt.show()
+ 
+sns.countplot(x="Target", data=df, color="C0")
+plt.title("Target distribution")
+plt.show()
+ 
+sns.heatmap(df.corr(numeric_only=True), annot=True, cmap="Blues")
+plt.title("Correlation heatmap")
+plt.show()
+ 
+#Code 10 – B: Encode features, split data and scale
+#For classification, the original template uses stratify=y. For a continuous #numeric regression target, remove stratify=y from the split before running.
+le = LabelEncoder()
+df["Sex"] = le.fit_transform(df["Sex"]) # text -> 0/1/2...
+df["BP"] = df["BP"].map({"LOW": 0, "NORMAL": 1, "HIGH": 2}) # ordered categories: map by hand
+# df = pd.get_dummies(df, columns=["City"]) # unordered categories: one-hot instead
+ 
+X = df.drop("Target", axis=1)
+y = df["Target"]
+ 
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y # stratify=y only for classification
+)
+ 
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train) # learn scale from train...
+X_test_scaled = scaler.transform(X_test) # ...apply to test (never fit on test!)
+ 
+#Code 10 – C: Decision Tree classification (run on a categorical target)
+model = DecisionTreeClassifier(criterion="entropy", max_depth=4, random_state=42)
+model.fit(X_train, y_train) # unscaled - trees don't need it
+pred = model.predict(X_test)
+ 
+print("Accuracy :", accuracy_score(y_test, pred))
+print("Precision:", precision_score(y_test, pred, average="weighted"))
+print("Recall :", recall_score(y_test, pred, average="weighted"))
+print("F1 :", f1_score(y_test, pred, average="weighted"))
+ 
+# Feature importance for the fitted Decision Tree
+importances = pd.Series(model.feature_importances_, index=X.columns).sort_values(ascending=False)
+print(importances)
+ 
+#Code 10 – D: One-vs-Rest and One-vs-One multiclass classifiers
+#Uses the same feature split/scaling as part B. This is a different multiclass #technique from the sentiment Logistic Regression in Code 1.
+ova = OneVsRestClassifier(LogisticRegression(max_iter=1000)).fit(X_train_scaled, y_train)
+ovo = OneVsOneClassifier(LogisticRegression(max_iter=1000)).fit(X_train_scaled, y_train)
+ 
+#Code 10 – E: Linear Regression (run on a numeric target)
+#Use the original template split/feature setup above but without `stratify=y` #for a continuous target. Run this section instead of the classifier section.
+model = LinearRegression()
+model.fit(X_train, y_train)
+pred = model.predict(X_test)
+ 
+print("MAE :", mean_absolute_error(y_test, pred))
+print("MSE :", mean_squared_error(y_test, pred))
+print("RMSE:", np.sqrt(mean_squared_error(y_test, pred)))
+print("R2 :", r2_score(y_test, pred))
+ 
+# Coefficients for the fitted Linear Regression
+coefs = pd.Series(model.coef_, index=X.columns)
+print(coefs)
+ 
+Code 10 – F: Regression Tree (run on a numeric target)
+#Again, use a numeric target and a split without stratification.
+model = DecisionTreeRegressor(max_depth=4, random_state=42)
+model.fit(X_train, y_train)
+pred = model.predict(X_test)
+ 
+print("MAE :", mean_absolute_error(y_test, pred))
+print("MSE :", mean_squared_error(y_test, pred))
+print("RMSE:", np.sqrt(mean_squared_error(y_test, pred)))
+print("R2 :", r2_score(y_test, pred))
+ 
+#Code 10 – G: K-Means clustering and elbow method (no y needed)
+X_scaled = StandardScaler().fit_transform(X)
+model = KMeans(n_clusters=3, random_state=42, n_init=10)
+clusters = model.fit_predict(X_scaled)
+ 
+wcss = []
+for k in range(1, 9):
+    km = KMeans(n_clusters=k, random_state=42, n_init=10)
+    km.fit(X_scaled)
+    wcss.append(km.inertia_)
+ 
+plt.plot(range(1, 9), wcss, marker="o")
+plt.xlabel("k"); plt.ylabel("WCSS")
+plt.title("Elbow Method")
+plt.show()
+
+
